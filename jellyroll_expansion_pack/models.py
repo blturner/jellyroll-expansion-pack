@@ -11,12 +11,15 @@ class AbstractJellyrollModel(models.Model):
 
 class Book(AbstractJellyrollModel):
     title = models.CharField(max_length=255)
-    author = models.CharField(max_length=255)
+    author = models.CharField(blank=True, max_length=255)
     cover_image = models.URLField(blank=True)
     subtitle = models.CharField(blank=True, max_length=255)
     published = models.DateTimeField(blank=True, null=True)
     isbn = models.CharField(max_length=255)
-    pages = models.PositiveIntegerField()
+    pages = models.IntegerField(blank=True, default=0)
+
+    class Meta(AbstractJellyrollModel.Meta):
+        ordering = ['title']
 
     def __unicode__(self):
         return self.title
@@ -26,9 +29,12 @@ class BookProgress(AbstractJellyrollModel):
     amount = models.PositiveIntegerField()
     amount_read = models.PositiveIntegerField()
     book = models.ForeignKey('Book')
-    date = models.DateTimeField()
+    date_read = models.DateTimeField()
     percent = models.PositiveIntegerField()
     url = models.URLField()
+
+    class Meta(AbstractJellyrollModel.Meta):
+        ordering = ['-date_read']
 
     def __unicode__(self):
         return 'Read {0} pages of {1}'.format(self.amount, self.book.title)

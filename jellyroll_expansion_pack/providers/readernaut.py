@@ -1,6 +1,11 @@
 import logging
 import urllib
 
+import iso8601
+import pytz
+
+from datetime import datetime
+
 from django.conf import settings
 
 from jellyroll.models import Item
@@ -31,7 +36,7 @@ def enabled():
     return True
 
 
-def update():
+def update(force=False):
     readernaut = ReadernautClient(settings.READERNAUT_USERNAME,
                                   settings.READERNAUT_API_KEY)
 
@@ -39,47 +44,61 @@ def update():
     resp = readernaut.goals.progress(limit=50)
     last_post_date = utils.parsedate(resp['objects'][0]['created'])
 
-    if last_post_date <= last_update_date:
+    if not force and last_post_date <= last_update_date:
         log.info('Skipping update: last update date: {0}; last post date: {1}'.format(last_update_date, last_post_date))
         return
 
-    total_count = resp['meta']['total_count']
-    limit = resp['meta']['limit']
     curr_index = 0
 
-    while curr_index < total_count:
+    while curr_index < resp['meta']['total_count']:
         if resp['objects']:
             for obj in resp['objects']:
                 _handle_goal(obj)
 
-        curr_index += limit
-        resp = readernaut.goals.progress(offset=curr_index)
+        curr_index += resp['meta']['limit']
+        resp = readernaut.goals.progress(limit=resp['meta']['limit'],
+                                         offset=curr_index)
 
 
 def _handle_goal(obj):
     book_info = obj['goal']['book_edition']['book']
     edition_info = obj['goal']['book_edition']
 
+    try:
+        published = datetime.strptime(
+            edition_info['published'], '%Y-%m-%d').replace(tzinfo=pytz.utc)
+    except TypeError:
+        published = None
+
+    date_read = iso8601.parse_date(obj['date_read'])
+
     book, book_created = Book.objects.get_or_create(
         title = book_info['title'],
-        author = _handle_authors(book_info['authors']),
-        cover_image = edition_info['cover'],
-        subtitle = edition_info['subtitle'],
-        published = edition_info['published'],
-        isbn = edition_info['isbn'],
-        pages = edition_info['pages'])
+        isbn = edition_info['isbn'])
+
+    if book_created:
+        book_dict = {
+            'author': _handle_authors(book_info['authors']),
+            'cover_image': edition_info['cover'],
+            'subtitle': edition_info['subtitle'],
+            'published': published,
+            'pages': edition_info['pages']
+        }
+        for att, val in book_dict.iteritems():
+            setattr(book, att, val)
+        book.save()
 
     book_progress, created = BookProgress.objects.get_or_create(
         book = book,
         amount = obj['amount'],
         amount_read = obj['amount_read'],
-        date = obj['date_read'],
+        date_read = date_read,
         percent = obj['percent'],
         url = obj['resource_uri'])
 
     return Item.objects.create_or_update(
         instance = book_progress,
-        timestamp = utils.parsedate(book_progress.date),
+        timestamp = book_progress.date_read,
         source = __name__)
 
 
@@ -88,5 +107,5 @@ def _handle_authors(author_info):
     for i, author in enumerate(author_info):
         author_string += author['full_name']
         if i != (len(author_info) - 1):
-            author_string += ' ,'
+            author_string += ', '
     return author_string
