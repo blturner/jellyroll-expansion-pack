@@ -38,3 +38,9 @@ class ReadernautProviderTestCase(TestCase):
     def test_skips_updates(self, mock_log):
         readernaut.update()
         self.assertTrue(mock_log.info.called)
+
+    @mock.patch('jellyroll_expansion_pack.providers.readernaut.log')
+    def test_force_updates(self, mock_log):
+        readernaut.update(force=True)
+        self.assertFalse(mock_log.info.called)
+
