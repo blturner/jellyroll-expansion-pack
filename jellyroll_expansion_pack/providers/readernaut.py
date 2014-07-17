@@ -48,16 +48,16 @@ def update(force=False):
         log.info('Skipping update: last update date: {0}; last post date: {1}'.format(last_update_date, last_post_date))
         return
 
-    curr_index = 0
+    offset = 0
 
-    while curr_index < resp['meta']['total_count']:
+    while offset < resp['meta']['total_count']:
         if resp['objects']:
             for obj in resp['objects']:
                 _handle_goal(obj)
 
-        curr_index += resp['meta']['limit']
+        offset += resp['meta']['limit']
         resp = readernaut.goals.progress(limit=resp['meta']['limit'],
-                                         offset=curr_index)
+                                         offset=offset)
 
 
 def _handle_goal(obj):
