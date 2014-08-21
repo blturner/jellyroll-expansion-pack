@@ -1,4 +1,5 @@
 import base64
+import dateutil
 import json
 import logging
 import requests
@@ -37,11 +38,9 @@ class TwitterClient(object):
 
         url = ('https://api.twitter.com/{0}.json?'.format(self.method)) + \
             urllib.urlencode(kwargs)
-        log.info(url)
+        # log.info(url)
 
-        response = requests.get(url, headers=headers)
-
-        return json.loads(response.content)
+        return requests.get(url, headers=headers)
 
     def set_api_token(self):
         log.info('SET THE API TOKEN')
@@ -70,6 +69,7 @@ def update():
     kwargs = {}
     since_id = None
     tweet_items = Item.objects.get_for_model(Tweet)
+    last_update_date = Item.objects.get_last_update_of_model(Tweet)
 
     client = TwitterClient(settings.TWITTER_USERNAME)
 
@@ -78,19 +78,25 @@ def update():
 
     if since_id:
         kwargs['since_id'] = since_id
-    _handle_tweets(client, **kwargs)
+    _handle_tweets(client, last_update_date, **kwargs)
 
 
-def _handle_tweets(client, **kwargs):
+def _handle_tweets(client, last_update_date=None, **kwargs):
     resp = client.statuses.user_timeline(**kwargs)
+    if resp.content:
+        body = json.loads(resp.content)
 
-    print resp
-
-    if not resp:
-        log.info('There was no response from the API endpoint.')
+    if not resp.status_code == 200:
+        log.info(body)
         return
 
-    max_id = resp[len(resp) - 1]['id']
+    last_tweet_date = dateutil.parser.parse(body[0]['created_at'])
+
+    if last_tweet_date <= last_update_date:
+        log.info('No new tweets.')
+        return
+
+    max_id = body[len(body) - 1]['id']
 
     if 'max_id' in kwargs:
         if max_id == kwargs['max_id']:
@@ -98,7 +104,7 @@ def _handle_tweets(client, **kwargs):
             return
     kwargs['max_id'] = max_id
 
-    for obj in resp:
+    for obj in body:
         tweet, created = Tweet.objects.get_or_create(
             created_at = parse(obj['created_at']),
             id_str = obj['id_str'],
