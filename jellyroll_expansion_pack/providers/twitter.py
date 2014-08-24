@@ -108,8 +108,11 @@ def _handle_tweets(client, last_update_date=None, **kwargs):
         tweet, created = Tweet.objects.get_or_create(
             created_at = parse(obj['created_at']),
             id_str = obj['id_str'],
+            profile_image_url = obj['user']['profile_image_url'],
             tweet_id = obj['id'],
-            text = obj['text'])
+            text = obj['text'],
+            user_id_str = obj['user']['id_str'],
+            username = obj['user']['name'])
 
         Item.objects.create_or_update(
             instance = tweet,

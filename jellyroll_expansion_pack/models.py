@@ -66,8 +66,11 @@ class Shot(AbstractJellyrollModel):
 class Tweet(AbstractJellyrollModel):
     created_at = models.DateTimeField()
     id_str = models.CharField(max_length=255)
+    profile_image_url = models.URLField()
     tweet_id = models.PositiveIntegerField()
     text = models.TextField()
+    user_id_str = models.PositiveIntegerField()
+    username = models.CharField(max_length=255)
 
     class Meta(AbstractJellyrollModel.Meta):
         ordering = ['-created_at']
