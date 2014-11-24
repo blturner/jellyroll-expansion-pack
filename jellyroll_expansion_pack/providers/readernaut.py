@@ -66,27 +66,23 @@ def _handle_goal(obj):
 
     try:
         published = datetime.strptime(
-            edition_info['published'], '%Y-%m-%d').replace(tzinfo=pytz.utc)
+            edition_info['published'], '%Y-%m-%d'
+        ).replace(tzinfo=pytz.utc)
     except TypeError:
         published = None
 
     date_read = iso8601.parse_date(obj['date_read'])
+    author = _handle_authors(book_info['authors'])
 
     book, book_created = Book.objects.get_or_create(
-        title = book_info['title'],
-        isbn = edition_info['isbn'])
-
-    if book_created:
-        book_dict = {
-            'author': _handle_authors(book_info['authors']),
-            'cover_image': edition_info['cover'],
-            'subtitle': edition_info['subtitle'],
-            'published': published,
-            'pages': edition_info['pages']
-        }
-        for att, val in book_dict.iteritems():
-            setattr(book, att, val)
-        book.save()
+        title=book_info['title'],
+        isbn=edition_info['isbn'],
+        author=author,
+        cover_image=edition_info['cover'],
+        subtitle=edition_info['subtitle'],
+        published=published,
+        pages=edition_info['pages']
+    )
 
     book_progress, created = BookProgress.objects.get_or_create(
         book = book,
