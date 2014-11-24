@@ -63,5 +63,26 @@ class Shot(AbstractJellyrollModel):
         return self.title
 
 
-Item.objects.follow_model(Shot)
+class Tweet(AbstractJellyrollModel):
+    created_at = models.DateTimeField()
+    id_str = models.CharField(max_length=255)
+    profile_image_url = models.URLField()
+    tweet_id = models.PositiveIntegerField()
+    text = models.TextField()
+    user_id_str = models.PositiveIntegerField()
+    username = models.CharField(max_length=255)
+
+    class Meta(AbstractJellyrollModel.Meta):
+        ordering = ['-created_at']
+
+    def __unicode__(self):
+        return self.text
+
+    def url(self):
+        return 'https://twitter.com/blturner/statuses/{0}'.format(self.id_str)
+    url = property(url)
+
+
 Item.objects.follow_model(BookProgress)
+Item.objects.follow_model(Shot)
+Item.objects.follow_model(Tweet)
